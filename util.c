@@ -1,5 +1,5 @@
 // 
-//   Вспомогательные процедуры проекта balong_flash
+//   Auxiliary procedures for balong_flash project
 // 
 #include <stdio.h>
 #include <stdint.h>
@@ -28,7 +28,7 @@
 
 
 //***********************
-//* Дамп области памяти *
+//* Memory area dump *
 //***********************
 
 void dump(char buffer[],int len,long base) {
@@ -56,7 +56,7 @@ for (i=0;i<len;i+=16) {
 
 
 //*************************************************
-//*  Вычисление CRC-16 
+//*  CRC-16 calculation 
 //*************************************************
 unsigned short crc16(char* buf, int len) {
 
@@ -102,11 +102,11 @@ return (~crc)&0xffff;
 }
 
 //****************************************************
-//* Определение версии прошивальщика
+//* Determine flasher version
 //*
-//*   0 - нет ответа на команду
-//*   1 - версия 2.0
-//*  -1 - версия не 2.0 
+//*   0 - no response to command
+//*   1 - version 2.0
+//*  -1 - not version 2.0 
 //****************************************************
 int dloadversion() {
 
@@ -120,13 +120,13 @@ if (strncmp(replybuf+2,"2.0",3) == 0) return 1;
 for (i=2;i<res;i++) {
   if (replybuf[i] == 0x0d) replybuf[i]=0;
 }  
-printf("\n! Неправильная версия монитора прошивки - [%i]%s\n",res,replybuf+2);
+printf("\n! Incorrect flash monitor version - [%i]%s\n",res,replybuf+2);
 // dump(replybuf,res,0);
 return -1;
 }
   
 //****************************************************
-//*------- Режим разрезания файла прошивки
+//*------- Firmware file split mode
 //****************************************************
 void fwsplit(uint32_t sflag) {
  
@@ -134,19 +134,19 @@ uint32_t i;
 FILE* out;
 uint8_t filename[200];
 
-printf("\n Выделение разделов из файла прошивки:\n\n ## Смещение  Размер   Имя\n-------------------------------------");
+printf("\n Extracting partitions from firmware file:\n\n ## Offset    Size     Name\n-------------------------------------");
 for (i=0;i<npart;i++) {  
    printf("\n %02i %08x %8i  %s",i,ptable[i].offset,ptable[i].hd.psize,ptable[i].pname); 
-   // формируем имя файла
+   // form file name
    sprintf(filename,"%02i-%08x-%s.%s",i,ptable[i].hd.code,ptable[i].pname,(sflag?"fw":"bin"));
    out=fopen(filename,"wb");
    
    if(sflag) {
-     // запись заголовка
-     fwrite(&ptable[i].hd,1,sizeof(struct pheader),out);   // фиксированный заголовок
-     fwrite((void*)ptable[i].csumblock,1,ptable[i].hd.hdsize-sizeof(struct pheader),out); // блок контрольных сумм
+     // write header
+     fwrite(&ptable[i].hd,1,sizeof(struct pheader),out);   // fixed header
+     fwrite((void*)ptable[i].csumblock,1,ptable[i].hd.hdsize-sizeof(struct pheader),out); // checksum block
    }
-   // запись тела
+   // write body
    fwrite(ptable[i].pimage,ptable[i].hd.psize,1,out);
    fclose(out);
 }
@@ -157,7 +157,7 @@ return;
 
 
 //****************************************************
-//* Вход в HDLC-режим
+//* Enter HDLC mode
 //****************************************************
 void enter_hdlc() {
 
@@ -169,70 +169,70 @@ usleep(100000);
 
 res=atcmd("^DATAMODE",replybuf);
 if (res != 6) {
-  printf("\n Неправильная длина ответа на ^DATAMODE");
+  printf("\n Incorrect response length to ^DATAMODE");
   exit(-2);
 }  
 if (memcmp(replybuf,OKrsp,6) != 0) {
-  printf("\n Команда ^DATAMODE отвергнута, возможно требуется режим цифровой подписи\n");
+  printf("\n ^DATAMODE command rejected, digital signature mode may be required\n");
   exit(-2);
 }  
 }
 
 //****************************************************
-//* Выход из HDLC-режима
+//* Exit HDLC mode
 //****************************************************
 void leave_hdlc() {
 
 uint8_t replybuf[100]; 
-unsigned char cmddone[7]={0x1};           // команда выхода из HDLC
+unsigned char cmddone[7]={0x1};           // HDLC exit command
   
 send_cmd(cmddone,1,replybuf);
 }
 
 
 //****************************************************
-//*  Получение версии протокол прошивки
+//*  Get flashing protocol version
 //****************************************************
 
 void protocol_version() {
   
 uint8_t replybuf[100]; 
 uint32_t iolen,i;  
-unsigned char cmdver[7]={0x0c};           // команда запроса версии протокола
+unsigned char cmdver[7]={0x0c};           // protocol version request command
   
 iolen=send_cmd(cmdver,1,replybuf);
 if (iolen == 0) {
-  printf("\n Нет ответа от модема в HDLC-режиме\n");
+  printf("\n No response from modem in HDLC mode\n");
   exit(-2);
 }  
 if (replybuf[0] == 0x7e) memcpy(replybuf,replybuf+1,iolen-1);
 if (replybuf[0] != 0x0d) {
-  printf("\n Ошибка получения версии протокола\n");
+  printf("\n Error getting protocol version\n");
   exit(-2);
 }  
   
 i=replybuf[1];
 replybuf[2+i]=0;
-printf("\n Версия протокола: %s",replybuf+2);
+printf("\n Protocol version: %s",replybuf+2);
 }
 
 
 
 //****************************************************
-//*  Перезагрузка модема
+//*  Restart modem
 //****************************************************
 void restart_modem() {
 
-unsigned char cmd_reset[7]={0xa};           // команда выхода из HDLC
+unsigned char cmd_reset[7]={0xa};           // HDLC exit command
 uint8_t replybuf[100]; 
 
-printf("\n Перезагрузка модема...\n");
+printf("\n Restarting modem...\n");
 send_cmd(cmd_reset,1,replybuf);
 atcmd("^RESET",replybuf);
 }
 
 //****************************************************
-//* Получение идентификатора устройства
+//* Get device identifier
 //****************************************************
 void dev_ident() {
   
@@ -241,25 +241,25 @@ uint32_t iolen;
 unsigned char cmd_getproduct[30]={0x45};
 
 iolen=send_cmd(cmd_getproduct,1,replybuf);
-if (iolen>2) printf("\n Идентификатор устройства: %s",replybuf+2); 
+if (iolen>2) printf("\n Device identifier: %s",replybuf+2); 
 }
 
 
 //****************************************************
-//* Вывод карты файла прошивки
+//* Display firmware file map
 //****************************************************
 void show_file_map() {
 
 int i;  
   
-printf("\n\n ## Смещение  Размер    Сжатие     Имя\n-----------------------------------------------");
+printf("\n\n ## Offset    Size      Compression     Name\n-----------------------------------------------");
 for (i=0;i<npart;i++) { 
      printf("\n %02i %08x %8i  ",i,ptable[i].offset,ptable[i].hd.psize);
      if (ptable[i].zflag == 0) 
-       // несжатый раздел
+       // uncompressed partition
        printf("           ");
      else {
-       // сжатый раздел
+       // compressed partition
        switch(ptable[i].ztype) {
 	 case 'L':
            printf("Lzma");
@@ -278,29 +278,29 @@ for (i=0;i<npart;i++) {
 
 
 //****************************************************
-//* Вывод информации о файле прошивки
+//* Display firmware file information
 //****************************************************
 void show_fw_info() {
 
 uint8_t* sptr; 
 char ver[36];
   
-if (ptable[0].hd.version[0] != ':') printf("\n Версия прошивки: %s",ptable[0].hd.version); // нестандартная строка версии
+if (ptable[0].hd.version[0] != ':') printf("\n Firmware version: %s",ptable[0].hd.version); // non-standard version string
 else {
-  // стандартная строка версии
+  // standard version string
   memset(ver,0,sizeof(ver));  
   strncpy(ver,ptable[0].hd.version,32);  
-  sptr=strrchr(ver+1,':'); // ищем разделитель-двоеточие
-  if (sptr == 0) printf("\n Версия прошивки: %s",ver); // не найдено - несоответствие стандарту
+  sptr=strrchr(ver+1,':'); // search for colon separator
+  if (sptr == 0) printf("\n Firmware version: %s",ver); // not found - standard mismatch
   else {
     *sptr=0;
-    printf("\n Версия прошивки: %s",sptr+1);
-    printf("\n Платформа:       %s",ver+1);
+    printf("\n Firmware version: %s",sptr+1);
+    printf("\n Platform:         %s",ver+1);
   }
 }  
   
-printf("\n Дата сборки:     %s %s",ptable[0].hd.date,ptable[0].hd.time);
-printf("\n Заголовок: версия %i, код соответствия: %8.8s",ptable[0].hd.hdversion,ptable[0].hd.unlock);
+printf("\n Build date:       %s %s",ptable[0].hd.date,ptable[0].hd.time);
+printf("\n Header: version %i, compatibility code: %8.8s",ptable[0].hd.hdversion,ptable[0].hd.unlock);
 }
 
 
